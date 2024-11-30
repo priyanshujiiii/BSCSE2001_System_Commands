@@ -1,127 +1,75 @@
-To solve the problem, you'll need to create a Bash script named `myCount.sh` that can handle various options (`-l`, `-w`, `-n`, `-s`, and combinations thereof) to process an input file (`somefile.txt`). Here’s how to approach it step by step:
+To implement the solution for the described problem, the script must handle multiple options (`-l`, `-w`, `-n`, and `-s`) using `sed` and manage combinations of options while counting specific details from a file.
 
----
-
-### Script Requirements
-
-1. **Options**:
-   - `-l`: Count the number of lines in the file.
-   - `-w`: Count the number of words in the file.
-   - `-n`: Count the number of numeric values in the file.
-   - `-s <string>`: Count the lines containing the string `<string>`.
-   - Support combinations like `-l -n` or `-l -s say -n`.
-
-2. **Default behavior**:
-   - If no options are provided, the script does nothing.
-   - If an invalid option is provided, it should return an error.
-
-3. **Output**:
-   - Display the result of each option on a new line in the order they are specified.
+Here's the `myCount.sh` script implementation:
 
 ---
 
 ### Implementation
 
-Here is the `myCount.sh` script:
-
 ```bash
 #!/bin/bash
 
-# Check if any arguments are provided
-if [[ $# -eq 0 ]]; then
+# Extract the file path (last argument)
+file="${@: -1}"
+
+# Check if no arguments are passed or file doesn't exist
+if [[ $# -eq 0 ]] || [[ ! -f "$file" ]]; then
     exit 0
 fi
 
-# Initialize variables
-file=""
-search_string=""
-count_lines=false
-count_words=false
-count_numbers=false
-count_string=false
-
-# Parse options
-while [[ $# -gt 0 ]]; do
+# Iterate through all options using a loop
+while [[ $# -gt 1 ]]; do
     case "$1" in
         -l)
-            count_lines=true
-            shift
+            # Count the number of lines
+            sed -n '$=' "$file"
             ;;
         -w)
-            count_words=true
-            shift
+            # Count the number of words
+            sed -E 's/\s+/\n/g' "$file" | sed '/^$/d' | sed -n '$='
             ;;
         -n)
-            count_numbers=true
-            shift
+            # Count lines with only numeric values
+            sed -n '/^[0-9]\+$/p' "$file" | sed -n '$='
             ;;
         -s)
-            count_string=true
-            search_string="$2"
-            shift 2
+            # Count lines containing the specified string
+            shift
+            sed -n "/$1/p" "$file" | sed -n '$='
             ;;
         *)
-            if [[ -f "$1" ]]; then
-                file="$1"
-                shift
-            else
-                echo "Invalid option or file: $1"
-                exit 1
-            fi
+            # Ignore invalid options
             ;;
     esac
+    shift
 done
-
-# Ensure the file exists
-if [[ -z "$file" || ! -f "$file" ]]; then
-    echo "File not found or not specified."
-    exit 1
-fi
-
-# Process options
-if $count_lines; then
-    wc -l < "$file"
-fi
-
-if $count_words; then
-    wc -w < "$file"
-fi
-
-if $count_numbers; then
-    grep -oE '[0-9]+' "$file" | wc -l
-fi
-
-if $count_string; then
-    grep -c "$search_string" "$file"
-fi
 ```
 
 ---
 
-### Explanation
+### Explanation of the Code
 
-1. **Parsing arguments**:
-   - Use a `while` loop to iterate through arguments.
-   - Use `case` to check for specific options.
-   - Handle options that require additional arguments (`-s <string>`).
+1. **File Validation**:
+   - The script checks if arguments are passed and if the last argument corresponds to a valid file. If not, the script exits.
 
-2. **File validation**:
-   - Ensure a valid file is provided after parsing all options.
+2. **Using `while` Loop**:
+   - The loop processes all arguments until the last argument (the file path).
+   - Options are matched using `case`.
 
-3. **Counting functionality**:
-   - `wc -l`: Counts the number of lines.
-   - `wc -w`: Counts the number of words.
-   - `grep -oE '[0-9]+' | wc -l`: Finds numeric values.
-   - `grep -c "$search_string"`: Counts lines containing the search string.
+3. **Counting with `sed`**:
+   - `-l`: `sed -n '$='` outputs the total number of lines in the file.
+   - `-w`: Words are split into separate lines using `sed -E 's/\s+/\n/g'`, empty lines are removed, and the total count is output with `sed -n '$='`.
+   - `-n`: Lines with only numeric values are matched using the regex `/^[0-9]\+$/`.
+   - `-s`: Lines containing the specified string are matched using `/str/`.
 
-4. **Output**:
-   - Each result is printed on a new line in the order the options are specified.
+4. **Multiple Options**:
+   - The loop ensures all specified options are processed, and results are printed in the specified order.
 
 ---
 
 ### Example Execution
 
-#### Input (`somefile.txt`):
+#### Input File (`somefile.txt`):
 ```text
 This is a sample file
 this is not end justsay start
@@ -164,15 +112,15 @@ $ bash myCount.sh -l -s say -l -n somefile.txt
 
 ---
 
-### Improvements
+### Key Notes
 
-1. **Error handling**:
-   - Inform the user if an invalid option or missing file is provided.
+1. **No `wc` or `awk`**:
+   - The solution strictly uses `sed` for all counting tasks.
 
-2. **Readability**:
-   - Break complex commands into multiple lines for clarity.
+2. **Efficient Processing**:
+   - The script uses `sed`'s built-in line counting (`$=`) and regex capabilities to minimize additional commands.
 
-3. **Efficiency**:
-   - Use built-in tools (`wc`, `grep`) that are optimized for these tasks.
+3. **Error Handling**:
+   - Invalid options are ignored, and the script exits if no arguments or invalid file paths are provided.
 
-This script covers all requirements and edge cases specified in the problem statement.
+This implementation adheres to all the requirements of the problem statement and handles edge cases effectively.
